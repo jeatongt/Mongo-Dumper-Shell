@@ -4,6 +4,7 @@ import sys
 import pprint
 from bson.json_util import dumps
 from json import loads, dump
+import argparse
 
 
 def get_mongo_session():
@@ -40,7 +41,7 @@ def find_messages_by_guid(guid_to_find):
 
 def get_list_of_collections():
     collections = db.list_collection_names()
-    print(collections)
+    pprint.pprint(collections)
 
 
 def dump_topic(topic_name):
@@ -51,6 +52,19 @@ def dump_topic(topic_name):
 
 
 db = get_mongo_session()
+parser = argparse.ArgumentParser(description='Mongo forensics')
+subparsers = parser.add_subparsers()
+parser_list = subparsers.add_parser('list')
+parser_list.set_defaults(func=get_list_of_collections)
+parser_dump = subparsers.add_parser('dump')
+parser_dump.add_argument('--topic', '-t', required=True)
+parser_dump.set_defaults(func=dump_topic)
+parser_search = subparsers.add_parser('search')
+parser_search.add_argument('--guid', '-g')
+parser_search.add_argument('--email', '-e')
+parser_search.add_argument('--topic', '-t')
+parser_search.set_defaults(func=search_collections)
+
 
 while 1 == 1:
     cmd = input("> ")
