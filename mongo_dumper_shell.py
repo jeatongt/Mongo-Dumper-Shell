@@ -21,55 +21,74 @@ def get_mongo_session():
     return MongoClient(url)['dwmops-db']
 
 
-def search_collections(**kwargs):
+def search_collections(search_args):
     """
     Accepts 'topic', 'guid', and 'email'
 
-    :param kwargs:
+    :param search_args:
     :return:
     """
-    if kwargs["topic"]:
-        if kwargs["guid"]:
-            topic_records = db[kwargs["topic"]].find({'headers.guid': kwargs["guid"]})
-        elif kwargs["email"]:
-            topic_records = db[kwargs["topic"]].find({'value.email_address': kwargs["email"]})
+    if search_args.topic:
+        if search_args.guid:
+            topic_records = db[search_args.topic].find({'headers.guid': search_args.guid})
+            print_records(topic_records, search_args.topic)
+        elif search_args.email:
+            topic_records = db[search_args.topic].find({'value.email_address': search_args.email})
+            print_records(topic_records, search_args.topic)
         else:
             print("  Use --email or --guid to search for specific records.  Use 'dump' to get entire collection")
             print()
     else:
         list_of_collections = db.list_collection_names()
-        if kwargs["guid"]:
+        if search_args.guid:
             for collection in list_of_collections:
-                topic_records = db[collection].find({'headers.guid': kwargs["guid"]})
-        elif kwargs["email"]:
+                topic_records = db[collection].find({'headers.guid': search_args.guid})
+                print_records(topic_records, collection)
+        elif search_args.email:
             for collection in list_of_collections:
-                topic_records = db[collection].find({'value.email_address': kwargs["email"]})
+                topic_records = db[collection].find({'value.email_address': search_args.email})
+                print_records(topic_records, collection)
         else:
             print("  Use --email or --guid to search for specific records.  Use 'dump' to get entire collection")
             print()
+            return
 
 
-def get_list_of_collections():
+def print_records(topic_records, collection):
+    records = [record for record in topic_records]
+    if records:
+        print("Messages found in collection", collection)
+        pprint.pprint(records)
+        print()
+        print()
+
+
+def get_list_of_collections(list_args):
     """
     Returns list of all collections in DB
 
+    :param list_args:
     :return:
     """
     collections = db.list_collection_names()
     pprint.pprint(collections)
 
 
-def dump_topic(topic_name):
+def dump_topic(dump_args):
     """
     Dumps entire collection to file
-    
-    :param topic_name:
+
+    :param dump_args:
     :return:
     """
-    topic_records = db[topic_name].find({})  # '{}' pulls all the records
+    topic_records = db[dump_args.topic].find({})  # '{}' pulls all the records
     records = [record for record in topic_records]
-    with open(os.path.join(os.getcwd(), topic_name), 'w') as f:
+    with open(os.path.join(os.getcwd(), dump_args.topic), 'w') as f:
         dump(loads(dumps(records)), f, indent=4)
+
+
+def program_exit(exit_args):
+    sys.exit()
 
 
 db = get_mongo_session()
@@ -85,48 +104,11 @@ parser_search.add_argument('--guid', '-g')
 parser_search.add_argument('--email', '-e')
 parser_search.add_argument('--topic', '-t')
 parser_search.set_defaults(func=search_collections)
+parser_exit = subparsers.add_parser('exit')
+parser_exit.set_defaults(func=program_exit)
 
 while 1 == 1:
     cmd = input("> ")
     cmd_array = cmd.split()
     args = parser.parse_args(cmd_array)
     args.func(args)
-
-# while 1 == 1:
-#     cmd = input("> ")
-#     cmd_array = cmd.split()
-#     if cmd_array[0] == "list":
-#         get_list_of_collections()
-#     elif cmd_array[0] == "dump":
-#         if len(cmd_array) == 1:
-#             print("Usage: > dump {collection name}")
-#             break
-#         else:
-#             dump_topic(cmd_array[1])
-#             print("Collection dumped to new file ", cmd_array[1])
-#             break
-#     elif cmd_array[0] == "guid":
-#         if len(cmd_array) == 1:
-#             print("Usage: > guid [-t topic_name] {guid}")
-#         elif cmd_array[1] == "-t":
-#             if cmd_array[2] == "":
-#                 print("Usage: > guid [-t topic_name] {guid}")
-#                 break
-#             elif cmd_array[3] == "":
-#                 print("Usage: > guid [-t topic_name] {guid}")
-#                 break
-#             else:
-#                 find_messages_by_guid_single_topic(cmd_array[2], cmd_array[3])
-#         else:
-#             if cmd_array[1] == "":
-#                 print("Usage: > guid [-t topic_name] {guid}")
-#                 break
-#             else:
-#                 find_messages_by_guid(cmd_array[1])
-#     elif cmd_array[0] == "test":
-#         cre = db.CampaignResponse_Canon_12p
-#         pprint.pprint(cre.find_one({'headers.guid': '82c0f8fe-4cff-11ea-9c77-0a58ac14b5c8'}))
-#     elif cmd_array[0] == "exit":
-#         break
-#     else:
-#         print("Unknown command")
